@@ -1,20 +1,47 @@
-var express = require('express');
-var path = require('path');
-var cookieParser = require('cookie-parser');
-var logger = require('morgan');
+const express = require("express");
+const path = require("path");
+const logger = require("morgan");
+const mongoose = require("mongoose");
+const cors = require("cors");
+const passport = require("passport");
+const flash = require("express-flash");
+const session = require("express-session");
 
-var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
+const constants = require("./constants");
 
-var app = express();
+const usersRouter = require("./routes/user.js");
 
-app.use(logger('dev'));
+const app = express();
+
+app.use(logger("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(cors());
+app.use(flash());
+app.use(
+  session({
+    secret: constants.sessionSecret,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      maxAge: 1000 * 60 * 60 * 2, // 2 hours
+    },
+  })
+);
+app.use(passport.initialize());
+app.use(passport.session());
 
-app.use('/', indexRouter);
-app.use('/users', usersRouter);
+// Database connection
+mongoose.connect(constants.mongoURI);
+
+mongoose.connection
+  .once("open", () => {
+    console.log("MongoDB database connection established successfully");
+  })
+  .on("error", (error) => {
+    console.error("MongoDB connection error:", error);
+  });
+
+app.use("/users", usersRouter);
 
 module.exports = app;
